@@ -21,6 +21,7 @@ class MainDecisionAgentNode(Node):
         user_query = shared["user_query"]
         history = shared.get("history", [])
         working_dir = shared["working_dir"]
+        model = shared.get("model", "claude-sonnet-4-20250514")
         
         logger.info(f"MainDecisionAgent: Processing user query: '{user_query}'")
         logger.info(f"MainDecisionAgent: Working directory: {working_dir}")
@@ -40,7 +41,8 @@ class MainDecisionAgentNode(Node):
             "user_query": user_query,
             "history_context": history_context,
             "working_dir": working_dir,
-            "has_history": len(history) > 0
+            "has_history": len(history) > 0,
+            "model": model
         }
     
     def exec(self, prep_res):
@@ -84,7 +86,7 @@ params:
   relative_workspace_path: <dir_path>  # for list_dir only
 ```"""
 
-        response = call_llm(prompt)
+        response = call_llm(prompt, prep_res['model'])
         
         # Parse YAML response
         try:
@@ -294,6 +296,7 @@ class AnalyzeAndPlanChangesNode(Node):
         file_content = last_action.get("file_content", "")
         instructions = last_action["params"].get("instructions", "")
         code_edit = last_action["params"].get("code_edit", "")
+        model = shared.get("model", "claude-sonnet-4-20250514")
         
         logger.info(f"EditAgent-Analyze: Planning edits based on instructions: '{instructions[:100]}...'")
         logger.info(f"EditAgent-Analyze: File content length: {len(file_content)} characters")
@@ -301,7 +304,8 @@ class AnalyzeAndPlanChangesNode(Node):
         return {
             "file_content": file_content,
             "instructions": instructions,
-            "code_edit": code_edit
+            "code_edit": code_edit,
+            "model": model
         }
     
     def exec(self, prep_res):
@@ -343,7 +347,7 @@ edits:
     replacement: "single line replacement"
 ```"""
 
-        response = call_llm(prompt)
+        response = call_llm(prompt, prep_res['model'])
         
         try:
             yaml_str = response.split("```yaml")[1].split("```")[0].strip()
@@ -447,11 +451,12 @@ class FormatResponseNode(Node):
     def prep(self, shared):
         history = shared.get("history", [])
         user_query = shared["user_query"]
+        model = shared.get("model", "claude-sonnet-4-20250514")
         
         logger.info(f"FormatResponse: Generating final response for user query: '{user_query}'")
         logger.info(f"FormatResponse: Processing {len(history)} completed actions")
         
-        return {"history": history, "user_query": user_query}
+        return {"history": history, "user_query": user_query, "model": model}
     
     def exec(self, prep_res):
         logger.info("FormatResponse: Calling LLM to generate final response")
@@ -512,7 +517,7 @@ Provide a clear, helpful summary of what was accomplished. Be specific about:
 
 Keep the response concise but informative."""
 
-        response = call_llm(prompt)
+        response = call_llm(prompt, prep_res['model'])
         logger.info("FormatResponse: Successfully generated final response")
         return response
     
@@ -537,10 +542,13 @@ class AnswerNode(Node):
     """Legacy node - answers questions using LLM."""
     
     def prep(self, shared):
-        return shared["question"]
+        return {
+            "question": shared["question"],
+            "model": shared.get("model", "claude-sonnet-4-20250514")
+        }
     
-    def exec(self, question):
-        return call_llm(question)
+    def exec(self, prep_res):
+        return call_llm(prep_res["question"], prep_res["model"])
     
     def post(self, shared, prep_res, exec_res):
         shared["answer"] = exec_res

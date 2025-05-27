@@ -13,13 +13,14 @@ logging.basicConfig(
     ]
 )
 
-def run_coding_agent(user_query, working_dir=None):
+def run_coding_agent(user_query, working_dir=None, model=None):
     """
     Run the coding agent with a specific query.
     
     Args:
         user_query (str): The user's coding request
         working_dir (str, optional): Working directory. Defaults to current directory.
+        model (str, optional): LLM model to use. Defaults to claude-sonnet-4-20250514.
     
     Returns:
         dict: The shared memory state after execution
@@ -31,6 +32,7 @@ def run_coding_agent(user_query, working_dir=None):
     shared = {
         "user_query": user_query,
         "working_dir": working_dir,
+        "model": model if model else "claude-sonnet-4-20250514",
         "history": [],
         "edit_operations": [],
         "response": ""
@@ -57,7 +59,7 @@ def run_coding_agent(user_query, working_dir=None):
         shared["response"] = f"Error: {error_msg}"
         return shared
 
-def interactive_mode():
+def interactive_mode(model=None):
     """Run the coding agent in interactive mode."""
     working_dir = os.getcwd()
     
@@ -66,6 +68,7 @@ def interactive_mode():
     print("=" * 60)
     print("Enter your coding requests. Type 'quit' to exit.")
     print(f"Working directory: {working_dir}")
+    print(f"LLM model: {model if model else 'claude-sonnet-4-20250514'}")
     print()
     
     while True:
@@ -86,7 +89,7 @@ def interactive_mode():
         print("\nProcessing your request...")
         print("-" * 40)
         
-        shared = run_coding_agent(user_query, working_dir)
+        shared = run_coding_agent(user_query, working_dir, model)
         
         # Display results
         print("\nAGENT RESPONSE:")
@@ -104,8 +107,9 @@ def main():
         description="Coding Agent - AI-powered file operations assistant",
         epilog="Examples:\n"
                "  python main.py --query \"Read the README.md file\"\n"
-               "  python main.py --query \"Search for 'TODO' in Python files\"\n"
-               "  python main.py  # Interactive mode",
+               "  python main.py --query \"Search for 'TODO' in Python files\" --model gpt-4o\n"
+               "  python main.py --model gemini/gemini-2.0-flash-exp  # Interactive mode with Gemini\n"
+               "  python main.py  # Interactive mode with default model",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -128,6 +132,13 @@ def main():
         help="Enable verbose logging output"
     )
     
+    parser.add_argument(
+        "--model", "-m",
+        type=str,
+        default=None,
+        help="LLM model to use. Examples: claude-sonnet-4-20250514, gpt-4o, gemini/gemini-2.0-flash-exp"
+    )
+    
     args = parser.parse_args()
     
     # Set logging level based on verbose flag
@@ -141,9 +152,10 @@ def main():
         # CLI mode with provided query
         print(f"Executing query: {args.query}")
         print(f"Working directory: {working_dir}")
+        print(f"LLM model: {args.model if args.model else 'claude-sonnet-4-20250514'}")
         print("-" * 50)
         
-        shared = run_coding_agent(args.query, working_dir)
+        shared = run_coding_agent(args.query, working_dir, args.model)
         
         # Display results
         print("\n" + "="*50)
@@ -173,7 +185,7 @@ def main():
                 print(f"  {i}. {status} {tool}: {reason}")
     else:
         # Interactive mode
-        interactive_mode()
+        interactive_mode(args.model)
 
 if __name__ == "__main__":
     main()
